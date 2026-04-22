@@ -503,6 +503,57 @@
   }
   .voice-select:focus { border-color: var(--amber-dim); }
 
+  /* ── API Key dialog ── */
+  .key-dialog-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(8,7,6,0.85);
+    backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+    padding: 1.5rem;
+  }
+  .key-dialog {
+    background: var(--card);
+    border: 1px solid var(--amber-dim);
+    border-radius: 6px;
+    padding: 1.8rem;
+    width: 100%; max-width: 420px;
+    position: relative;
+    animation: fadeUp 0.25s ease;
+  }
+  .key-dialog::before {
+    content: '';
+    position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--amber), transparent);
+  }
+  .key-dialog-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem; font-weight: 700;
+    color: var(--amber-glow);
+    margin-bottom: 0.4rem;
+  }
+  .key-dialog-reason {
+    font-size: 0.85rem; color: var(--red);
+    font-family: 'Space Mono', monospace;
+    margin-bottom: 1rem; min-height: 1.2rem;
+  }
+  .key-dialog p {
+    font-size: 0.88rem; color: var(--muted);
+    font-style: italic; margin-bottom: 1rem;
+    line-height: 1.5;
+  }
+  .key-dialog input {
+    width: 100%;
+    background: var(--deep); border: 1px solid var(--border2);
+    border-radius: 3px; color: var(--cream);
+    font-family: 'Space Mono', monospace; font-size: 0.72rem;
+    padding: 0.6rem 0.8rem; outline: none; direction: ltr;
+    margin-bottom: 1rem;
+    transition: border-color 0.2s;
+  }
+  .key-dialog input:focus { border-color: var(--amber-dim); }
+  .key-dialog-actions { display: flex; gap: 0.6rem; justify-content: flex-start; }
+
   /* ── Sub-label ── */
   .sub-label {
     font-family: 'Space Mono', monospace; font-size: 0.62rem;
@@ -563,7 +614,7 @@
     <div id="parse-error" class="error-box" style="display:none"></div>
     <div class="row">
       <button class="primary" id="btn-parse">✦ נתח תסריט</button>
-      <span class="hint">AI יחלץ אוטומטית את הדמויות והשורות</span>
+      <span class="hint">AI יחלץ את הדמויות והשורות</span>
     </div>
   </div>
 
@@ -635,9 +686,39 @@
   </div>
   </div><!-- /content -->
 
+  <!-- API Key Dialog -->
+  <div class="key-dialog-overlay" id="key-dialog">
+    <div class="key-dialog">
+      <div class="key-dialog-title">🔑 OpenAI API Key</div>
+      <div class="key-dialog-reason" id="key-dialog-reason"></div>
+      <p>הכנסי את המפתח שלך מ-<strong style="color:var(--cream-dim)">platform.openai.com</strong>. הוא יישמר על המכשיר שלך בלבד.</p>
+      <input type="password" id="key-input-field" placeholder="sk-proj-..." />
+      <div class="key-dialog-actions">
+        <button class="primary" id="btn-save-key">שמור ◀</button>
+      </div>
+    </div>
+  </div>
+
 <script>
-// ─── Config ───────────────────────────────────────────────────────────────────
-const OAI_KEY = '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';
+// ─── API Key management ───────────────────────────────────────────────────────
+function getKey() { return localStorage.getItem('oai_key') || ''; }
+function saveKey(k) { localStorage.setItem('oai_key', k.trim()); }
+
+function showKeyDialog(reason) {
+  $('key-dialog-reason').textContent = reason || '';
+  $('key-input-field').value = getKey();
+  $('key-dialog').style.display = 'flex';
+  setTimeout(() => $('key-input-field').focus(), 50);
+}
+
+function hideKeyDialog() { $('key-dialog').style.display = 'none'; }
+
+function handleSaveKey() {
+  const val = $('key-input-field').value.trim();
+  if (!val) return;
+  saveKey(val);
+  hideKeyDialog();
+}
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let parsedScript = null;
@@ -709,6 +790,15 @@ const btnBack   = $('btn-back');
 const btnStart  = $('btn-start');
 const btnStop   = $('btn-stop');
 
+// Wire key dialog
+$('btn-save-key').onclick = handleSaveKey;
+$('key-input-field').onkeydown = e => { if (e.key === 'Enter') handleSaveKey(); };
+// Click outside dialog to dismiss (only if key already exists)
+$('key-dialog').onclick = e => { if (e.target === $('key-dialog') && getKey()) hideKeyDialog(); };
+
+// Check for key on load
+if (!getKey()) showKeyDialog();
+
 // ─── Step Nav ────────────────────────────────────────────────────────────────
 function goStep(n) {
   [0,1,2].forEach(i => {
@@ -736,7 +826,7 @@ btnParse.onclick = async () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OAI_KEY}`
+        'Authorization': `Bearer ${getKey()}`
       },
       body: JSON.stringify({
         model: 'gpt-4o',
@@ -757,6 +847,7 @@ btnParse.onclick = async () => {
       })
     });
     const data = await res.json();
+    if (res.status === 401) { showKeyDialog('המפתח שגוי או פג תוקף'); return; }
     if (data.error) throw new Error(data.error.message);
     const raw = data.choices?.[0]?.message?.content || '';
     const parsed = JSON.parse(raw);
@@ -868,7 +959,12 @@ async function startSession() {
     const others = parsedScript.characters.filter(c => c !== userCharacter);
     activeLines = parsedScript.lines.slice(startLineIndex);
     const scriptText = activeLines
-      .map(l => `${l.character}: ${l.text}${l.direction?` (${l.direction})`:''}`)
+      .map(l => {
+        // Strip any parenthetical directions embedded in the text itself,
+        // then append the parsed direction field in square brackets for clarity
+        const cleanText = l.text.replace(/[\(\[].*?[\)\]]/g, '').trim();
+        return `${l.character}: ${cleanText}${l.direction ? ` [${l.direction}]` : ''}`;
+      })
       .join('\n');
 
     // Use the first AI character's assigned voice for the session
@@ -886,7 +982,7 @@ ${scriptText}
 - המתן שהמשתמש יסיים לפני שאתה מגיב
 - גלם כל דמות לפי אופייה ורגשותיה
 - קרא את הטקסט של כל שורה מילה במילה, בדיוק כפי שכתוב — אל תשנה, תקצר או תוסיף מילים
-- טקסט בסוגריים עגולים () או מרובעים [] הן הוראות במאי — פעל לפיהן בטון ורגש הדיבור, אך אל תקרא אותן בקול
+- טקסט בסוגריים מרובעים [] הן הוראות במאי — פעל לפיהן בטון ורגש הדיבור, אך אל תקרא אותן בקול לעולם. לדוגמה: אם השורה היא 'אני אוהב אותך [בלחש]' — אמור רק: 'אני אוהב אותך'
 - המשך את הסצנה לפי סדר התסריט בדיוק
 - אם המשתמש אומר "עצור" או "עזרה", צא מהמחזה וענה בפשטות`;
 
@@ -894,7 +990,7 @@ ${scriptText}
     const tokenRes = await fetch('https://api.openai.com/v1/realtime/sessions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OAI_KEY}`,
+        'Authorization': `Bearer ${getKey()}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -904,15 +1000,17 @@ ${scriptText}
         input_audio_transcription: { model: 'whisper-1' },
         turn_detection: {
           type: 'server_vad',
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 700
+          threshold: 0.45,          // slightly more sensitive to voice
+          prefix_padding_ms: 200,   // less pre-roll needed
+          silence_duration_ms: 400, // respond faster after user stops talking
+          create_response: true     // auto-create response immediately on turn end
         }
       })
     });
 
     if (!tokenRes.ok) {
       const err = await tokenRes.json();
+      if (tokenRes.status === 401) { showKeyDialog('המפתח שגוי או פג תוקף'); btnStart.disabled = false; btnStart.innerHTML = 'התחל סצנה ◀'; return; }
       throw new Error(err.error?.message || 'Failed to create session');
     }
     const tokenData = await tokenRes.json();
@@ -985,13 +1083,14 @@ ${scriptText}
     // ── Turn state machine ─────────────────────────────────────────────────
     activeLines = parsedScript.lines.slice(startLineIndex);
     let phase = 'idle'; // 'ai_speaking' | 'waiting_user' | 'idle'
+    let interrupted = false; // true when user speaks while AI is mid-turn
 
     function onAIStarted() {
-      // If we were waiting for user and AI is now responding — user turn is done
       if (phase === 'waiting_user') {
         currentLine++;
         if (currentLine < activeLines.length) highlightLine(currentLine);
       }
+      interrupted = false;
       phase = 'ai_speaking';
       if (currentLine < activeLines.length && activeLines[currentLine].character !== userCharacter) {
         highlightLine(currentLine);
@@ -1002,6 +1101,16 @@ ${scriptText}
       if (phase !== 'ai_speaking') return;
       aiTranscript = '';
       updateTranscript('');
+
+      if (interrupted) {
+        // AI was cut off mid-line by user speech — don't advance the pointer.
+        // The server will cancel the response and fire a new response.created
+        // once the user finishes speaking. Stay on this line.
+        interrupted = false;
+        phase = 'waiting_user';
+        return;
+      }
+
       currentLine++;
       if (currentLine >= activeLines.length) { phase = 'idle'; return; }
       if (activeLines[currentLine].character === userCharacter) {
@@ -1016,17 +1125,15 @@ ${scriptText}
     dc.onmessage = e => {
       try {
         const ev = JSON.parse(e.data);
-        if (ev.type === 'response.created') {
-          onAIStarted();
+
+        // Crosstalk detection — user spoke while AI was talking
+        if (ev.type === 'input_audio_buffer.speech_started' && phase === 'ai_speaking') {
+          interrupted = true;
         }
-        if (ev.type === 'response.audio_transcript.delta') {
-          aiTranscript += (ev.delta || '');
-          updateTranscript(aiTranscript);
-        }
-        if (ev.type === 'response.done') {
-          onAIDone();
-        }
-        // Show live user transcript (display only — pointer driven by response.created)
+
+        if (ev.type === 'response.created')                          onAIStarted();
+        if (ev.type === 'response.audio_transcript.delta')           { aiTranscript += (ev.delta || ''); updateTranscript(aiTranscript); }
+        if (ev.type === 'response.done')                             onAIDone();
         if (ev.type === 'conversation.item.input_audio_transcription.completed') {
           updateTranscript('🎤 ' + (ev.transcript || ''));
           setTimeout(() => updateTranscript(''), 2500);
