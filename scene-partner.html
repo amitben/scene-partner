@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>שותף לתסריט · AI Scene Partner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black: #080706;
+    --deep: #0f0d0a;
+    --surface: #171510;
+    --card: #1c1a14;
+    --card2: #201e17;
+    --border: #2a2720;
+    --border2: #3a3728;
+    --amber: #c8922a;
+    --amber-dim: #8a6218;
+    --amber-glow: #e8b44a;
+    --amber-soft: rgba(200,146,42,0.12);
+    --cream: #ede5d0;
+    --cream-dim: #a89e88;
+    --muted: #6a6252;
+    --red: #b84040;
+    --green: #3a8c5a;
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--black);
+    color: var(--cream);
+    font-family: 'Crimson Text', Georgia, serif;
+    direction: rtl;
+  }
+
+  body {
+    background-image:
+      radial-gradient(ellipse 100% 25% at 50% 0%, rgba(200,146,42,0.07) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 60% at 80% 100%, rgba(200,146,42,0.03) 0%, transparent 60%);
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ── Full-screen layout ── */
+  .wrap {
+    width: 100%;
+    height: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    flex-shrink: 0;
+    text-align: center;
+    padding: 0.65rem 1rem 0;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 50%; transform: translateX(-50%);
+    width: 60px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--amber), transparent);
+  }
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: var(--amber-glow);
+    text-shadow: 0 0 40px rgba(232,180,74,0.2);
+    letter-spacing: 0.04em;
+    margin-bottom: 0.5rem;
+  }
+
+  /* ── Steps bar ── */
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  .step-node {
+    display: flex; align-items: center; gap: 0.4rem;
+    flex: 1; justify-content: center;
+    padding: 0.45rem 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    transition: color 0.3s;
+  }
+  .step-node.active { color: var(--amber-glow); }
+  .step-node.done   { color: var(--amber-dim); }
+  .step-num {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.6rem;
+    background: var(--deep);
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .step-node.active .step-num { border-color: var(--amber); background: var(--amber); color: var(--black); font-weight: 700; box-shadow: 0 0 10px rgba(200,146,42,0.4); }
+  .step-node.done   .step-num { border-color: var(--amber-dim); color: var(--amber-dim); }
+  .step-line { flex: 0 0 20px; height: 1px; background: var(--border); }
+
+  /* ── Scrollable content area ── */
+  .content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border2) transparent;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+  }
+  .content.scene-active {
+    overflow: hidden;
+    padding: 0.6rem;
+  }
+
+  /* ── Card ── */
+  .card {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1.2rem 1.2rem;
+    margin-bottom: 0;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: fadeUp 0.35s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 10%; right: 10%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--amber-dim), transparent);
+  }
+  .card.fill { flex: 1; margin-bottom: 0; }
+
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--amber);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.6rem;
+    flex-shrink: 0;
+  }
+  .card-title .badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.58rem; font-weight: 700;
+    background: var(--amber); color: var(--black);
+    padding: 0.15rem 0.4rem; border-radius: 2px;
+  }
+
+  /* ── Textarea ── */
+  textarea {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    background: var(--deep);
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    color: var(--cream);
+    font-family: 'Crimson Text', serif;
+    font-size: 1rem;
+    line-height: 1.7;
+    padding: 0.9rem 1rem;
+    resize: none;
+    direction: rtl;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  textarea:focus { border-color: var(--amber-dim); box-shadow: 0 0 0 3px rgba(200,146,42,0.06); }
+  textarea::placeholder { color: var(--muted); font-style: italic; }
+
+  /* ── Buttons ── */
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.6rem 1.4rem;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--amber);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.18s;
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    touch-action: manipulation;
+  }
+  button:hover:not(:disabled) { background: var(--amber-soft); border-color: var(--amber); color: var(--amber-glow); }
+  button:disabled { opacity: 0.35; cursor: not-allowed; }
+  button.primary { background: var(--amber); color: var(--black); border-color: var(--amber); font-weight: 700; }
+  button.primary:hover:not(:disabled) { background: var(--amber-glow); border-color: var(--amber-glow); }
+  button.ghost { color: var(--muted); border-color: var(--border); }
+  button.ghost:hover:not(:disabled) { color: var(--cream-dim); border-color: var(--border2); background: rgba(255,255,255,0.03); }
+  button.danger { color: var(--red); border-color: rgba(184,64,64,0.4); }
+  button.danger:hover:not(:disabled) { background: rgba(184,64,64,0.1); border-color: var(--red); }
+
+  .row { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin-top: 1rem; }
+  .spacer { flex: 1; }
+  .hint { color: var(--muted); font-style: italic; font-size: 0.82rem; }
+
+  /* ── Error ── */
+  .error-box {
+    background: rgba(184,64,64,0.08);
+    border: 1px solid rgba(184,64,64,0.35);
+    border-radius: 3px;
+    padding: 0.6rem 0.8rem;
+    color: #e08080;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    margin-top: 0.7rem;
+    line-height: 1.5;
+  }
+
+  /* ── Script preview (cast screen) ── */
+  .script-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border2) transparent;
+  }
+  .sline {
+    display: flex; gap: 0.8rem; align-items: flex-start;
+    padding: 0.45rem 0.4rem;
+    border-bottom: 1px solid rgba(42,39,32,0.6);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+  }
+  .sline:hover { background: rgba(255,255,255,0.03); }
+  .sline.mine { background: rgba(200,146,42,0.05); }
+  .sline.mine:hover { background: rgba(200,146,42,0.09); }
+  .sline.before-start { opacity: 0.3; }
+  .sline.is-start {
+    background: rgba(200,146,42,0.12) !important;
+    border-bottom-color: var(--amber-dim);
+  }
+  .sline.is-start::before {
+    content: 'התחל כאן ◀';
+    position: absolute;
+    left: 0.4rem; top: 50%; transform: translateY(-50%);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--amber);
+    background: var(--card);
+    padding: 0.1rem 0.3rem;
+    border-radius: 2px;
+    border: 1px solid var(--amber-dim);
+  }
+  .schar {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    min-width: 70px; color: var(--amber-dim);
+    padding-top: 0.2rem; flex-shrink: 0; text-align: right;
+  }
+  .schar.mine { color: var(--amber-glow); }
+  .stext { font-size: 1rem; line-height: 1.6; color: var(--cream); flex: 1; }
+  .sdir  { font-size: 0.8rem; font-style: italic; color: var(--muted); margin-top: 0.1rem; }
+
+  /* ── Teleprompter ── */
+  .teleprompter {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--deep);
+    border: 1px solid var(--border);
+  }
+  .teleprompter::before,
+  .teleprompter::after {
+    content: '';
+    position: absolute; left: 0; right: 0;
+    height: 80px; z-index: 2; pointer-events: none;
+  }
+  .teleprompter::before { top: 0; background: linear-gradient(to bottom, var(--deep) 0%, transparent 100%); }
+  .teleprompter::after  { bottom: 0; background: linear-gradient(to top, var(--deep) 0%, transparent 100%); }
+  .tp-scroll {
+    position: absolute; inset: 0;
+    overflow-y: scroll; scrollbar-width: none; -ms-overflow-style: none;
+    padding: 0; scroll-behavior: smooth;
+  }
+  .tp-scroll::-webkit-scrollbar { display: none; }
+  .tp-pad { height: 200px; }
+  .tp-line {
+    width: 100%; padding: 0.75rem 1rem;
+    display: flex; flex-direction: column;
+    align-items: center; text-align: center;
+    transition: opacity 0.35s, transform 0.35s;
+    position: relative;
+  }
+  .tp-line.past   { opacity: 0.45; transform: scale(0.96); }
+  .tp-line.future { opacity: 0.45; transform: scale(0.96); }
+  .tp-line.current { opacity: 1; transform: scale(1); }
+  .tp-char {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.58rem; font-weight: 700;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--amber-dim); margin-bottom: 0.3rem;
+  }
+  .tp-line.current .tp-char { color: var(--amber); }
+  .tp-line.current.user-line .tp-char { color: var(--amber-glow); }
+  .tp-text {
+    font-family: 'Crimson Text', serif;
+    font-size: clamp(1rem, 3vw, 1.15rem);
+    line-height: 1.65; color: var(--cream-dim);
+  }
+  .tp-line.current .tp-text { font-size: clamp(1.1rem, 3.5vw, 1.3rem); color: var(--cream); }
+  .tp-line.current.user-line .tp-text {
+    font-size: clamp(1.3rem, 5vw, 1.7rem);
+    font-weight: 600; color: #fff;
+    text-shadow: 0 0 30px rgba(232,180,74,0.35), 0 0 60px rgba(232,180,74,0.15);
+    line-height: 1.45;
+  }
+  .tp-dir { font-size: 0.8rem; font-style: italic; color: var(--muted); margin-top: 0.25rem; }
+  .tp-line.current.user-line .tp-dir { color: var(--amber-dim); }
+  .tp-line.current.user-line::before {
+    content: '';
+    position: absolute; inset: -2px 4px;
+    border-radius: 4px;
+    border: 1px solid rgba(200,146,42,0.3);
+    animation: ringPulse 2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes ringPulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+  /* ── Session bar ── */
+  .session-bar {
+    flex-shrink: 0;
+    width: 100%;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.65rem 1rem;
+    display: flex; align-items: center; gap: 0.8rem;
+    margin-bottom: 0.6rem;
+    position: relative; overflow: hidden;
+    flex-wrap: wrap;
+    animation: fadeUp 0.3s ease both;
+  }
+  .session-bar::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 10%; right: 10%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--amber-dim), transparent);
+  }
+
+  /* ── Status / wave / mic ── */
+  .status {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-family: 'Space Mono', monospace; font-size: 0.62rem;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: all 0.3s; }
+  .dot.connecting { background: var(--amber); animation: pulse 0.9s infinite; }
+  .dot.connected  { background: var(--green); box-shadow: 0 0 8px rgba(58,140,90,0.6); }
+  .dot.error      { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  .ai-wave { display: flex; align-items: center; gap: 3px; height: 20px; opacity: 0; transition: opacity 0.3s; }
+  .ai-wave.active { opacity: 1; }
+  .wbar { width: 3px; background: var(--amber); border-radius: 2px; animation: wv 0.7s ease-in-out infinite; }
+  .wbar:nth-child(1){height:5px;animation-delay:0s}
+  .wbar:nth-child(2){height:12px;animation-delay:0.1s}
+  .wbar:nth-child(3){height:18px;animation-delay:0.2s}
+  .wbar:nth-child(4){height:12px;animation-delay:0.3s}
+  .wbar:nth-child(5){height:5px;animation-delay:0.4s}
+  @keyframes wv { 0%,100%{transform:scaleY(0.35)} 50%{transform:scaleY(1)} }
+
+  .ai-label { font-family: 'Space Mono', monospace; font-size: 0.62rem; letter-spacing: 0.07em; color: var(--amber); opacity: 0; transition: opacity 0.3s; }
+  .ai-label.active { opacity: 1; }
+
+  .mic-area { display: flex; align-items: center; gap: 0.4rem; font-family: 'Space Mono', monospace; font-size: 0.62rem; color: var(--muted); }
+  .mic-bars { display: flex; gap: 2px; align-items: flex-end; height: 14px; }
+  .mbar { width: 3px; border-radius: 1px; background: var(--border2); transition: height 0.08s, background 0.1s; height: 2px; }
+
+  /* ── Live transcript ── */
+  .live-transcript {
+    flex-shrink: 0;
+    background: var(--deep);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.6rem 0.8rem;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-top: 0.5rem;
+    transition: color 0.2s;
+    min-height: 40px;
+  }
+  .live-transcript.has-text { color: var(--cream-dim); }
+
+  /* ── Loading dots ── */
+  .dots span { animation: blink 1.1s infinite; display:inline-block; }
+  .dots span:nth-child(2){animation-delay:0.18s}
+  .dots span:nth-child(3){animation-delay:0.36s}
+  @keyframes blink { 0%,100%{opacity:0.15} 50%{opacity:1} }
+
+  /* ── Cast rows ── */
+  .cast-rows-wrap {
+    border: 1px solid transparent;
+    border-radius: 4px;
+    transition: border-color 0.3s, background 0.3s;
+    margin-bottom: 0.2rem;
+  }
+  .cast-rows-wrap.needs-selection {
+    border-color: var(--amber-dim);
+    background: rgba(200,146,42,0.04);
+    animation: nudge 1.8s ease-in-out infinite;
+  }
+  @keyframes nudge {
+    0%,100% { border-color: var(--amber-dim); }
+    50%      { border-color: var(--amber-glow); box-shadow: 0 0 10px rgba(200,146,42,0.15); }
+  }
+  .cast-rows-wrap.needs-selection::before {
+    content: 'בחרי את הדמות שלך ↓';
+    display: block;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--amber);
+    padding: 0.4rem 0.6rem 0;
+    text-align: center;
+  }
+  .cast-row {
+    display: flex; align-items: center; gap: 0.7rem;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid rgba(42,39,32,0.5);
+    border-radius: 2px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .cast-row:hover { background: rgba(255,255,255,0.02); }
+  .cast-row.is-user { background: rgba(200,146,42,0.06); border-color: rgba(200,146,42,0.15); }
+  .cast-char-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem; font-style: italic;
+    color: var(--cream-dim); min-width: 80px; flex-shrink: 0;
+  }
+  .cast-row.is-user .cast-char-name { color: var(--amber-glow); }
+  .cast-role-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.56rem; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 0.15rem 0.4rem; border-radius: 2px; flex-shrink: 0;
+  }
+  .cast-role-badge.you { background: var(--amber); color: var(--black); }
+  .cast-role-badge.ai  { background: var(--border2); color: var(--muted); }
+  .cast-spacer { flex: 1; }
+  .gender-tag {
+    font-family: 'Space Mono', monospace; font-size: 0.58rem;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 0.3rem; color: var(--muted); flex-shrink: 0;
+  }
+  .voice-select {
+    background: var(--deep); border: 1px solid var(--border2);
+    border-radius: 3px; color: var(--cream-dim);
+    font-family: 'Space Mono', monospace; font-size: 0.65rem;
+    padding: 0.3rem 0.5rem; outline: none; cursor: pointer;
+    min-width: 100px; max-width: 130px; direction: ltr;
+    transition: border-color 0.18s;
+  }
+  .voice-select:focus { border-color: var(--amber-dim); }
+
+  /* ── Sub-label ── */
+  .sub-label {
+    font-family: 'Space Mono', monospace; font-size: 0.62rem;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 0.5rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .sub-label::after { content:''; flex:1; height:1px; background: var(--border); }
+
+  /* ── Tablet ── */
+  @media (min-width: 600px) {
+    .card { padding: 1.5rem 1.6rem; }
+    .session-bar { padding: 0.75rem 1.2rem; }
+    textarea { font-size: 1.05rem; }
+  }
+
+  /* ── Desktop ── */
+  @media (min-width: 860px) {
+    header { padding: 0.8rem 1.5rem 0; }
+    .content { padding: 1.2rem 1.5rem; }
+    .content.scene-active { padding: 0.8rem 1.5rem; }
+    .card { padding: 1.6rem 2rem; margin-bottom: 1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">שותף לסצנה</div>
+    <div class="steps" id="steps">
+      <div class="step-node active" id="s0"><span class="step-num">1</span>תסריט</div>
+      <div class="step-line"></div>
+      <div class="step-node" id="s1"><span class="step-num">2</span>ליהוק</div>
+      <div class="step-line"></div>
+      <div class="step-node" id="s2"><span class="step-num">3</span>סצנה</div>
+    </div>
+  </header>
+
+  <!-- Step 0: Input -->
+  <div class="content" id="main-content">
+  <div class="card" id="card-input">
+    <div class="card-title"><span class="badge">01</span> הכנסת תסריט</div>
+
+    <textarea id="script-input" placeholder="הדביקי כאן את התסריט שלך בעברית...
+
+לדוגמה:
+דני: (מביט בה בתדהמה) יעל? את כאן?
+יעל: (מחייכת) כן, הפתעה.
+דני: לא... לא ציפיתי. חשבתי שנסעת לחו״ל.
+יעל: שיניתי תוכניות. היה לי הרגשה שצריך להישאר.
+דני: (בשקט) בגללי?
+יעל: (מסתכלת הצידה) אולי. לא יודעת עוד.
+דני: אני שמח שנשארת.
+יעל: (מסתובבת אליו) אל תגיד דברים שאתה לא מתכוון אליהם.
+דני: (נוגע בידה) אני מתכוון לכל מילה."></textarea>
+
+    <div id="parse-error" class="error-box" style="display:none"></div>
+    <div class="row">
+      <button class="primary" id="btn-parse">✦ נתח תסריט</button>
+      <span class="hint">AI יחלץ אוטומטית את הדמויות והשורות</span>
+    </div>
+  </div>
+
+  <!-- Step 1: Cast -->
+  <div class="card" id="card-cast" style="display:none">
+    <div class="card-title"><span class="badge">02</span> ליהוק — בחרי את הדמות שלך</div>
+    <p style="color:var(--muted);margin-bottom:1rem;font-size:0.9rem;font-style:italic">
+      לחצי על הדמות שלך. ה-AI יגלם את שאר הדמויות — בחרי קול לכל אחת.
+    </p>
+    <div class="cast-rows-wrap needs-selection" id="cast-rows-wrap">
+      <div id="cast-rows"></div>
+    </div>
+
+    <div class="sub-label" style="margin-top:0.8rem">תצוגה מקדימה של התסריט</div>
+    <div class="script-list" id="preview-list"></div>
+
+    <div id="session-error" class="error-box" style="display:none"></div>
+    <div class="row">
+      <button class="ghost" id="btn-back">עריכה →</button>
+      <div class="spacer"></div>
+      <button class="primary" id="btn-start" disabled>התחל סצנה ◀</button>
+    </div>
+  </div>
+
+  <!-- Session bar -->
+  <div class="session-bar" id="session-bar" style="display:none">
+    <div class="status">
+      <div class="dot" id="status-dot"></div>
+      <span id="status-text">מתחבר...</span>
+    </div>
+
+    <div class="ai-wave" id="ai-wave">
+      <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+      <div class="wbar"></div><div class="wbar"></div>
+    </div>
+    <div class="ai-label" id="ai-label">מדבר/ת</div>
+
+    <div class="spacer"></div>
+
+    <div class="mic-area">
+      <span id="mic-icon">🎤</span>
+      <div class="mic-bars" id="mic-bars">
+        <div class="mbar" id="mb0"></div>
+        <div class="mbar" id="mb1"></div>
+        <div class="mbar" id="mb2"></div>
+        <div class="mbar" id="mb3"></div>
+        <div class="mbar" id="mb4"></div>
+      </div>
+      <span id="mic-label">ממתין</span>
+    </div>
+
+    <button class="danger" id="btn-stop">■ עצור</button>
+  </div>
+
+  <!-- Step 2: Live scene -->
+  <div class="card fill" id="card-scene" style="display:none">
+    <div class="card-title">
+      <span class="badge">03</span>
+      סצנה חיה &nbsp;·&nbsp; אתה מגלמת: <span id="scene-char-label" style="color:var(--amber-glow);font-style:italic;margin-right:0.3rem"></span>
+    </div>
+    <div class="teleprompter" id="teleprompter">
+      <div class="tp-scroll" id="tp-scroll">
+        <div class="tp-pad"></div>
+        <!-- lines injected here by JS -->
+        <div class="tp-pad"></div>
+      </div>
+    </div>
+    <div id="live-transcript" class="live-transcript">הקשבה...</div>
+  </div>
+  </div><!-- /content -->
+
+<script>
+// ─── Config ───────────────────────────────────────────────────────────────────
+const OAI_KEY = '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';
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let parsedScript = null;
+let userCharacter = null;
+let charVoices = {};      // { characterName: voiceId }
+let startLineIndex = 0;   // which line to start the session from
+let currentLine = 0;
+let activeLines = [];     // parsedScript.lines sliced from startLineIndex
+let peerConn = null;
+let dataChannel = null;
+let micStream = null;
+let aiAudioCtx = null;
+let micAudioCtx = null;
+let animId = null;
+
+// ─── Voice options (OpenAI Realtime supported voices) ─────────────────────────
+const VOICES = [
+  { id: 'alloy',   name: 'Alloy',   gender: 'n', label: 'Alloy · ניטרלי' },
+  { id: 'ash',     name: 'Ash',     gender: 'n', label: 'Ash · ניטרלי' },
+  { id: 'ballad',  name: 'Ballad',  gender: 'm', label: 'Ballad · גבר' },
+  { id: 'coral',   name: 'Coral',   gender: 'f', label: 'Coral · אישה' },
+  { id: 'echo',    name: 'Echo',    gender: 'm', label: 'Echo · גבר' },
+  { id: 'sage',    name: 'Sage',    gender: 'f', label: 'Sage · אישה' },
+  { id: 'shimmer', name: 'Shimmer', gender: 'f', label: 'Shimmer · אישה' },
+  { id: 'verse',   name: 'Verse',   gender: 'm', label: 'Verse · גבר' },
+];
+const VOICES_BY_GENDER = {
+  f: VOICES.filter(v => v.gender === 'f').map(v => v.id),  // coral, sage, shimmer
+  m: VOICES.filter(v => v.gender === 'm').map(v => v.id),  // ballad, echo, verse
+  n: VOICES.filter(v => v.gender === 'n').map(v => v.id),  // alloy, ash
+};
+
+// Pick distinct voices for each character, cycling through the pool for that gender
+function assignVoices(characters) {
+  const counters = { f: 0, m: 0, n: 0 };
+  const result = {};
+  characters.forEach(c => {
+    const gender = parsedScript.genders?.[c] || 'n';
+    const pool = VOICES_BY_GENDER[gender];
+    result[c] = pool[counters[gender] % pool.length];
+    counters[gender]++;
+  });
+  return result;
+}
+
+// ─── Merge consecutive lines by the same character ────────────────────────────
+function mergeConsecutiveLines(lines) {
+  if (!lines || lines.length === 0) return lines;
+  const merged = [];
+  for (const line of lines) {
+    const prev = merged[merged.length - 1];
+    if (prev && prev.character === line.character) {
+      // Append text with a space; merge directions if both exist
+      prev.text += ' ' + line.text;
+      if (line.direction) {
+        prev.direction = prev.direction
+          ? prev.direction + ' · ' + line.direction
+          : line.direction;
+      }
+    } else {
+      merged.push({ ...line });
+    }
+  }
+  return merged;
+}
+const $ = id => document.getElementById(id);
+const btnParse  = $('btn-parse');
+const btnBack   = $('btn-back');
+const btnStart  = $('btn-start');
+const btnStop   = $('btn-stop');
+
+// ─── Step Nav ────────────────────────────────────────────────────────────────
+function goStep(n) {
+  [0,1,2].forEach(i => {
+    const s = $(`s${i}`);
+    s.className = 'step-node' + (i===n?' active':i<n?' done':'');
+  });
+  $('card-input').style.display  = n===0 ? '' : 'none';
+  $('card-cast').style.display   = n===1 ? '' : 'none';
+  $('session-bar').style.display = n===2 ? '' : 'none';
+  $('card-scene').style.display  = n===2 ? 'flex' : 'none';
+  $('main-content').className    = n===2 ? 'content scene-active' : 'content';
+}
+
+// ─── Parse Script ────────────────────────────────────────────────────────────
+btnParse.onclick = async () => {
+  const ta = $('script-input');
+  const script = ta.value.trim() || ta.placeholder.replace(/^.*?\n\n/s, '').trim();
+
+  btnParse.disabled = true;
+  btnParse.innerHTML = 'מנתח<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
+  $('parse-error').style.display = 'none';
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OAI_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        max_tokens: 4000,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: `אתה מנתח תסריטים. חלץ את שורות הדיאלוג בלבד, וזהה מגדר לכל דמות.
+החזר JSON במבנה:
+{"characters":["שם1","שם2"],"genders":{"שם1":"f","שם2":"m"},"lines":[{"character":"שם","text":"הטקסט","direction":"הוראה או מחרוזת ריקה"}]}
+ערכי מגדר: "f" = אישה, "m" = גבר, "n" = לא ידוע/ניטרלי.
+זהה מגדר לפי שם (שמות עבריים כמו יעל/מיכל/רחל = f; דני/יוסי/אמיר = m).
+חוקים: חלץ רק דיאלוגים. direction = הוראות במאי צמודות לשורה — ריק אם אין. התעלם מהוראות מערכה ותיאורי סצנה.`
+          },
+          { role: 'user', content: `תסריט:\n${script}` }
+        ]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const raw = data.choices?.[0]?.message?.content || '';
+    const parsed = JSON.parse(raw);
+    parsed.lines = mergeConsecutiveLines(parsed.lines);
+    parsedScript = parsed;
+    charVoices = assignVoices(parsedScript.characters);
+    buildCastScreen();
+    // Reset selection state for fresh parse
+    userCharacter = null;
+    startLineIndex = 0;
+    btnStart.disabled = true;
+    const wrap = $('cast-rows-wrap');
+    if (wrap) wrap.classList.add('needs-selection');
+    goStep(1);
+  } catch(e) {
+    showError('parse-error', 'שגיאה: ' + e.message);
+  }
+  btnParse.disabled = false;
+  btnParse.innerHTML = '✦ נתח תסריט';
+};
+
+// ─── Build Cast Screen ────────────────────────────────────────────────────────
+function buildCastScreen() {
+  const container = $('cast-rows');
+  container.innerHTML = '';
+
+  parsedScript.characters.forEach(c => {
+    const gender = parsedScript.genders?.[c] || 'n';
+    const genderLabel = gender === 'f' ? 'אישה' : gender === 'm' ? 'גבר' : 'ניטרלי';
+    const genderDot = `<span class="gender-dot ${gender}" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;display:inline-block;background:${gender==='f'?'#c87ca0':gender==='m'?'#7ca0c8':'var(--muted)'}"></span>`;
+    const isUser = c === userCharacter;
+
+    const row = document.createElement('div');
+    row.className = 'cast-row' + (isUser ? ' is-user' : '');
+    row.id = `cast-row-${c.replace(/\s+/g,'-')}`;
+
+    // Build voice select options
+    const voiceOpts = VOICES.map(v =>
+      `<option value="${v.id}" ${charVoices[c]===v.id?'selected':''}>${v.label}</option>`
+    ).join('');
+
+    row.innerHTML = `
+      <span class="cast-role-badge ${isUser?'you':'ai'}" style="cursor:pointer">${isUser?'אני':'AI'}</span>
+      <div class="cast-char-name" style="cursor:pointer">${escHtml(c)}</div>
+      <div class="cast-spacer"></div>
+      <div class="gender-tag">${genderDot} ${genderLabel}</div>
+      ${!isUser ? `<select class="voice-select" data-char="${escHtml(c)}">${voiceOpts}</select>` : '<div style="min-width:110px"></div>'}
+    `;
+
+    row.style.cursor = 'pointer';
+    row.onclick = () => selectCharacter(c);
+
+    // Voice dropdown change (stop propagation so clicking select doesn't re-select char)
+    if (!isUser) {
+      row.querySelector('.voice-select').onchange = (e) => {
+        charVoices[c] = e.target.value;
+      };
+      row.querySelector('.voice-select').onclick = (e) => e.stopPropagation();
+    }
+
+    container.appendChild(row);
+  });
+
+  renderPreview();
+}
+
+function selectCharacter(c) {
+  userCharacter = c;
+  startLineIndex = 0;
+  btnStart.disabled = false;
+  $('cast-rows-wrap').classList.remove('needs-selection');
+  charVoices = assignVoices(parsedScript.characters);
+  buildCastScreen();
+}
+
+function renderPreview() {
+  const list = $('preview-list');
+  list.innerHTML = '';
+  parsedScript.lines.forEach((line, i) => {
+    const mine = line.character === userCharacter;
+    const div = document.createElement('div');
+    div.className = 'sline'
+      + (mine ? ' mine' : '')
+      + (i === startLineIndex ? ' is-start' : '')
+      + (i < startLineIndex ? ' before-start' : '');
+    div.innerHTML = `
+      <div class="schar ${mine?'mine':''}">${escHtml(line.character)}</div>
+      <div class="stext">${escHtml(line.text)}${line.direction?`<div class="sdir">(${escHtml(line.direction)})</div>`:''}</div>`;
+    div.onclick = () => { startLineIndex = i; renderPreview(); };
+    list.appendChild(div);
+  });
+}
+
+// ─── Start Session ────────────────────────────────────────────────────────────
+btnStart.onclick = startSession;
+btnBack.onclick = () => { stopSession(); goStep(0); };
+btnStop.onclick = () => { stopSession(); goStep(1); };
+
+async function startSession() {
+  $('session-error').style.display = 'none';
+  btnStart.disabled = true;
+  btnStart.innerHTML = 'מתחבר<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
+
+  setStatus('connecting', 'מתחבר...');
+  currentLine = 0;
+
+  try {
+    // Build system prompt using only lines from the chosen start position
+    const others = parsedScript.characters.filter(c => c !== userCharacter);
+    activeLines = parsedScript.lines.slice(startLineIndex);
+    const scriptText = activeLines
+      .map(l => `${l.character}: ${l.text}${l.direction?` (${l.direction})`:''}`)
+      .join('\n');
+
+    // Use the first AI character's assigned voice for the session
+    const sessionVoice = charVoices[others[0]] || 'shimmer';
+
+    const sysPrompt = `אתה שותף לקריאת תסריט בעברית. אתה מגלם את הדמויות: ${others.join(', ')}.
+המשתמש מגלם את: ${userCharacter}.
+
+התסריט:
+${scriptText}
+
+הוראות חשובות:
+- דבר עברית בלבד, תמיד
+- אל תאמר שמות דמויות לעולם — פשוט אמור את הטקסט של השורה ישירות
+- המתן שהמשתמש יסיים לפני שאתה מגיב
+- גלם כל דמות לפי אופייה ורגשותיה
+- קרא את הטקסט של כל שורה מילה במילה, בדיוק כפי שכתוב — אל תשנה, תקצר או תוסיף מילים
+- טקסט בסוגריים עגולים () או מרובעים [] הן הוראות במאי — פעל לפיהן בטון ורגש הדיבור, אך אל תקרא אותן בקול
+- המשך את הסצנה לפי סדר התסריט בדיוק
+- אם המשתמש אומר "עצור" או "עזרה", צא מהמחזה וענה בפשטות`;
+
+    // Get ephemeral token from OpenAI
+    const tokenRes = await fetch('https://api.openai.com/v1/realtime/sessions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OAI_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-realtime-preview-2024-12-17',
+        voice: sessionVoice,
+        instructions: sysPrompt,
+        input_audio_transcription: { model: 'whisper-1' },
+        turn_detection: {
+          type: 'server_vad',
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 700
+        }
+      })
+    });
+
+    if (!tokenRes.ok) {
+      const err = await tokenRes.json();
+      throw new Error(err.error?.message || 'Failed to create session');
+    }
+    const tokenData = await tokenRes.json();
+    const ephemeralKey = tokenData.client_secret?.value;
+    if (!ephemeralKey) throw new Error('No ephemeral key returned');
+
+    // WebRTC setup
+    const pc = new RTCPeerConnection();
+    peerConn = pc;
+
+    // Remote audio (model output)
+    const audioEl = new Audio();
+    audioEl.autoplay = true;
+    pc.ontrack = e => {
+      audioEl.srcObject = e.streams[0];
+      // Detect AI speaking via analyser
+      if (!aiAudioCtx) aiAudioCtx = new AudioContext();
+      const src = aiAudioCtx.createMediaStreamSource(e.streams[0]);
+      const analyser = aiAudioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      src.connect(analyser);
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteFrequencyData(buf);
+        const avg = buf.reduce((a,b)=>a+b,0)/buf.length;
+        const speaking = avg > 7;
+        $('ai-wave').classList.toggle('active', speaking);
+        $('ai-label').classList.toggle('active', speaking);
+        animId = requestAnimationFrame(tick);
+      };
+      tick();
+    };
+
+    // Microphone
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micStream = stream;
+    stream.getTracks().forEach(t => pc.addTrack(t, stream));
+
+    // Mic level bars
+    micAudioCtx = new AudioContext();
+    const micSrc = micAudioCtx.createMediaStreamSource(stream);
+    const micAn = micAudioCtx.createAnalyser();
+    micAn.fftSize = 128;
+    micSrc.connect(micAn);
+    const micBuf = new Uint8Array(micAn.frequencyBinCount);
+    const mbIds = ['mb0','mb1','mb2','mb3','mb4'];
+    const bands = [2,8,18,32,50];
+    const micTick = () => {
+      micAn.getByteFrequencyData(micBuf);
+      let total = 0;
+      bands.forEach((b,i) => {
+        const v = micBuf[Math.min(b, micBuf.length-1)];
+        total += v;
+        const h = Math.max(2, (v/255)*16);
+        const el = $(mbIds[i]);
+        if (el) { el.style.height = h + 'px'; el.style.background = h>8?'var(--amber)':'var(--border2)'; }
+      });
+      const avg = total/bands.length;
+      $('mic-icon').textContent = avg > 20 ? '🎙️' : '🎤';
+      $('mic-label').textContent = avg > 20 ? 'מדברת' : 'ממתין';
+      requestAnimationFrame(micTick);
+    };
+    micTick();
+
+    // Data channel for server events
+    const dc = pc.createDataChannel('oai-events');
+    dataChannel = dc;
+    let aiTranscript = '';
+
+    // ── Turn state machine ─────────────────────────────────────────────────
+    activeLines = parsedScript.lines.slice(startLineIndex);
+    let phase = 'idle'; // 'ai_speaking' | 'waiting_user' | 'idle'
+
+    function onAIStarted() {
+      // If we were waiting for user and AI is now responding — user turn is done
+      if (phase === 'waiting_user') {
+        currentLine++;
+        if (currentLine < activeLines.length) highlightLine(currentLine);
+      }
+      phase = 'ai_speaking';
+      if (currentLine < activeLines.length && activeLines[currentLine].character !== userCharacter) {
+        highlightLine(currentLine);
+      }
+    }
+
+    function onAIDone() {
+      if (phase !== 'ai_speaking') return;
+      aiTranscript = '';
+      updateTranscript('');
+      currentLine++;
+      if (currentLine >= activeLines.length) { phase = 'idle'; return; }
+      if (activeLines[currentLine].character === userCharacter) {
+        phase = 'waiting_user';
+        highlightLine(currentLine);
+      } else {
+        phase = 'ai_speaking';
+        highlightLine(currentLine);
+      }
+    }
+
+    dc.onmessage = e => {
+      try {
+        const ev = JSON.parse(e.data);
+        if (ev.type === 'response.created') {
+          onAIStarted();
+        }
+        if (ev.type === 'response.audio_transcript.delta') {
+          aiTranscript += (ev.delta || '');
+          updateTranscript(aiTranscript);
+        }
+        if (ev.type === 'response.done') {
+          onAIDone();
+        }
+        // Show live user transcript (display only — pointer driven by response.created)
+        if (ev.type === 'conversation.item.input_audio_transcription.completed') {
+          updateTranscript('🎤 ' + (ev.transcript || ''));
+          setTimeout(() => updateTranscript(''), 2500);
+        }
+      } catch {}
+    };
+
+    // SDP offer/answer
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    const sdpRes = await fetch(
+      `https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ephemeralKey}`,
+          'Content-Type': 'application/sdp'
+        },
+        body: offer.sdp
+      }
+    );
+
+    if (!sdpRes.ok) {
+      const t = await sdpRes.text();
+      throw new Error('SDP failed: ' + t.slice(0,200));
+    }
+    const answerSdp = await sdpRes.text();
+    await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'connected') {
+        setStatus('connected', 'מחובר');
+        // If the first line belongs to the AI, trigger it automatically
+        if (activeLines[0] && activeLines[0].character !== userCharacter) {
+          setTimeout(() => {
+            if (dataChannel && dataChannel.readyState === 'open') {
+              dataChannel.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'message',
+                  role: 'user',
+                  content: [{ type: 'input_text', text: 'התחל את הסצנה — אמור את השורה הראשונה שלך.' }]
+                }
+              }));
+              dataChannel.send(JSON.stringify({ type: 'response.create' }));
+            }
+          }, 800);
+        }
+      }
+      if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+        setStatus('error', 'החיבור נותק');
+      }
+    };
+
+    // Build scene view
+    $('scene-char-label').textContent = userCharacter;
+    buildSceneList();
+    goStep(2);
+
+  } catch(err) {
+    setStatus('error', err.message);
+    showError('session-error', err.message);
+    btnStart.disabled = false;
+    btnStart.innerHTML = 'התחל סצנה ◀';
+  }
+}
+
+// ─── Teleprompter ─────────────────────────────────────────────────────────────
+function buildSceneList() {
+  const scroll = $('tp-scroll');
+  scroll.querySelectorAll('.tp-line').forEach(el => el.remove());
+
+  const pads = scroll.querySelectorAll('.tp-pad');
+    activeLines = parsedScript.lines.slice(startLineIndex);
+  activeLines.forEach((line, i) => {
+    const isUser = line.character === userCharacter;
+    const div = document.createElement('div');
+    div.id = `tl${i}`;
+    div.className = 'tp-line future' + (isUser ? ' user-line' : '');
+    div.innerHTML = `
+      <div class="tp-char">${escHtml(line.character)}</div>
+      <div class="tp-text">${escHtml(line.text)}</div>
+      ${line.direction ? `<div class="tp-dir">(${escHtml(line.direction)})</div>` : ''}
+    `;
+    scroll.insertBefore(div, pads[1]);
+  });
+
+  // Reset scroll position before highlight
+  scroll.scrollTop = 0;
+  highlightLine(0);
+}
+
+function highlightLine(idx) {
+    activeLines = parsedScript.lines.slice(startLineIndex);
+  activeLines.forEach((_, i) => {
+    const el = $(`tl${i}`);
+    if (!el) return;
+    const isUser = activeLines[i].character === userCharacter;
+    el.className = 'tp-line' + (isUser ? ' user-line' : '');
+    if (i < idx)       el.classList.add('past');
+    else if (i === idx) el.classList.add('current');
+    else               el.classList.add('future');
+  });
+
+  // Scroll so the current line is vertically centered
+  const scroll = $('tp-scroll');
+  const cur = $(`tl${idx}`);
+  if (cur && scroll) {
+    const target = cur.offsetTop - (scroll.clientHeight / 2) + (cur.offsetHeight / 2);
+    scroll.scrollTop = target;
+  }
+}
+
+// ─── Stop Session ────────────────────────────────────────────────────────────
+function stopSession() {
+  if (peerConn) { peerConn.close(); peerConn = null; }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  if (aiAudioCtx) { aiAudioCtx.close(); aiAudioCtx = null; }
+  if (micAudioCtx) { micAudioCtx.close(); micAudioCtx = null; }
+  setStatus('idle', 'לא מחובר');
+  btnStart.disabled = false;
+  btnStart.innerHTML = 'התחל סצנה ◀';
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function setStatus(state, text) {
+  const dot = $('status-dot');
+  dot.className = 'dot ' + state;
+  $('status-text').textContent = text;
+}
+
+function showError(id, msg) {
+  const el = $(id);
+  el.textContent = msg;
+  el.style.display = '';
+}
+
+function updateTranscript(text) {
+  const el = $('live-transcript');
+  if (text) { el.textContent = text; el.classList.add('has-text'); }
+  else { el.textContent = 'הקשבה...'; el.classList.remove('has-text'); }
+}
+
+function escHtml(str) {
+  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
