@@ -226,6 +226,10 @@
   button:disabled { opacity: 0.35; cursor: not-allowed; }
   button.primary { background: var(--amber); color: var(--black); border-color: var(--amber); font-weight: 700; }
   button.primary:hover:not(:disabled) { background: var(--amber-glow); border-color: var(--amber-glow); }
+  button.pause { color: var(--amber-dim); border-color: rgba(138,98,24,0.4); }
+  button.pause:hover:not(:disabled) { background: rgba(200,146,42,0.1); border-color: var(--amber-dim); color: var(--amber); }
+  button.pause.active { color: var(--green); border-color: rgba(58,140,90,0.5); }
+  button.pause.active:hover:not(:disabled) { background: rgba(58,140,90,0.1); border-color: var(--green); }
   button.ghost { color: var(--muted); border-color: var(--border); }
   button.ghost:hover:not(:disabled) { color: var(--cream-dim); border-color: var(--border2); background: rgba(255,255,255,0.03); }
   button.danger { color: var(--red); border-color: rgba(184,64,64,0.4); }
@@ -554,6 +558,75 @@
   .key-dialog input:focus { border-color: var(--amber-dim); }
   .key-dialog-actions { display: flex; gap: 0.6rem; justify-content: flex-start; }
 
+  /* ── Debug panel ── */
+  .debug-panel {
+    display: none;
+    background: rgba(8,7,6,0.95);
+    border: 1px solid var(--amber-dim);
+    border-radius: 4px;
+    padding: 1rem 1.2rem;
+    margin: 0 1rem 0.8rem;
+    animation: fadeUp 0.2s ease;
+  }
+  .debug-panel.visible { display: block; }
+  .debug-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--amber-dim);
+    margin-bottom: 0.8rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .debug-title::after { content:''; flex:1; height:1px; background: var(--border); }
+  .debug-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.8rem;
+  }
+  .debug-field label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.58rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted);
+    display: block; margin-bottom: 0.3rem;
+  }
+  .debug-field select {
+    width: 100%;
+    background: var(--deep); border: 1px solid var(--border2);
+    border-radius: 3px; color: var(--cream-dim);
+    font-family: 'Space Mono', monospace; font-size: 0.65rem;
+    padding: 0.35rem 0.5rem; outline: none; cursor: pointer;
+    direction: ltr; transition: border-color 0.18s;
+  }
+  .debug-field select:focus { border-color: var(--amber-dim); }
+
+  /* ── Event log panel ── */
+  .log-panel {
+    flex-shrink: 0;
+    background: var(--deep);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    margin-top: 0.5rem;
+    max-height: 120px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border2) transparent;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    direction: ltr;
+  }
+  .log-panel:empty { display: none; }
+  .log-entry {
+    padding: 0.2rem 0.6rem;
+    border-bottom: 1px solid rgba(42,39,32,0.4);
+    display: flex; gap: 0.6rem; align-items: baseline;
+  }
+  .log-entry:last-child { border-bottom: none; }
+  .log-time { color: var(--muted); flex-shrink: 0; }
+  .log-msg  { color: var(--cream-dim); flex: 1; }
+  .log-entry.log-interrupt .log-msg { color: #e08060; }
+  .log-entry.log-tool     .log-msg { color: #80c0e0; }
+  .log-entry.log-speak    .log-msg { color: var(--amber); }
+  .log-entry.log-advance  .log-msg { color: var(--green); }
+
   /* ── Sub-label ── */
   .sub-label {
     font-family: 'Space Mono', monospace; font-size: 0.62rem;
@@ -583,7 +656,7 @@
 <div class="wrap">
 
   <header>
-    <div class="logo">שותף לסצנה</div>
+    <div class="logo" id="logo-tap">שותף לסצנה</div>
     <div class="steps" id="steps">
       <div class="step-node active" id="s0"><span class="step-num">1</span>תסריט</div>
       <div class="step-line"></div>
@@ -592,6 +665,42 @@
       <div class="step-node" id="s2"><span class="step-num">3</span>סצנה</div>
     </div>
   </header>
+
+  <!-- Debug panel (hidden, triple-tap logo to show) -->
+  <div class="debug-panel" id="debug-panel">
+    <div class="debug-title">⚙ Debug Options</div>
+    <div class="debug-grid">
+      <div class="debug-field">
+        <label>Realtime Model</label>
+        <select id="dbg-model">
+          <option value="gpt-realtime-1.5">gpt-realtime-1.5 (default)</option>
+          <option value="gpt-realtime-2025-08-28">gpt-realtime (2025-08-28)</option>
+          <option value="gpt-4o-realtime-preview-2024-12-17">gpt-4o-realtime (dec 2024)</option>
+        </select>
+      </div>
+      <div class="debug-field">
+        <label>Transcription Model</label>
+        <select id="dbg-transcription">
+          <option value="whisper-1">whisper-1 (default)</option>
+          <option value="gpt-4o-transcribe">gpt-4o-transcribe</option>
+          <option value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe</option>
+        </select>
+      </div>
+      <div class="debug-field">
+        <label>Input Language</label>
+        <select id="dbg-language">
+          <option value="he">Hebrew (default)</option>
+          <option value="en">English</option>
+          <option value="ar">Arabic</option>
+          <option value="fr">French</option>
+          <option value="es">Spanish</option>
+          <option value="de">German</option>
+          <option value="ru">Russian</option>
+          <option value="">Auto-detect</option>
+        </select>
+      </div>
+    </div>
+  </div>
 
   <!-- Step 0: Input -->
   <div class="content" id="main-content">
@@ -666,6 +775,7 @@
       <span id="mic-label">ממתין</span>
     </div>
 
+    <button class="pause" id="btn-pause">⏸ השהה</button>
     <button class="danger" id="btn-stop">■ עצור</button>
   </div>
 
@@ -683,6 +793,7 @@
       </div>
     </div>
     <div id="live-transcript" class="live-transcript">הקשבה...</div>
+    <div class="log-panel" id="log-panel"></div>
   </div>
   </div><!-- /content -->
 
@@ -720,7 +831,43 @@ function handleSaveKey() {
   hideKeyDialog();
 }
 
-// ─── State ────────────────────────────────────────────────────────────────────
+// ─── Script Cache ─────────────────────────────────────────────────────────────
+const CACHE_KEY  = 'script_cache';
+const CACHE_LIMIT = 5;
+
+function cacheHash(str) {
+  // Simple djb2 hash — fast, no crypto needed
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
+  return (h >>> 0).toString(36);
+}
+
+function cacheLoad() {
+  try { return JSON.parse(localStorage.getItem(CACHE_KEY)) || []; } catch { return []; }
+}
+
+function cacheSave(entries) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(entries)); } catch {}
+}
+
+function cacheGet(rawScript) {
+  const hash = cacheHash(rawScript.trim());
+  return cacheLoad().find(e => e.hash === hash) || null;
+}
+
+function cacheSet(rawScript, parsed, isPlaceholder = false) {
+  const hash = cacheHash(rawScript.trim());
+  let entries = cacheLoad().filter(e => e.hash !== hash);
+  entries.unshift({ hash, raw: isPlaceholder ? null : rawScript.trim(), parsed, savedAt: Date.now() });
+  if (entries.length > CACHE_LIMIT) entries = entries.slice(0, CACHE_LIMIT);
+  cacheSave(entries);
+}
+
+function cacheLastRaw() {
+  const entries = cacheLoad();
+  const entry = entries.find(e => e.raw);
+  return entry ? entry.raw : null;
+}
 let parsedScript = null;
 let userCharacter = null;
 let charVoices = {};      // { characterName: voiceId }
@@ -789,6 +936,7 @@ const btnParse  = $('btn-parse');
 const btnBack   = $('btn-back');
 const btnStart  = $('btn-start');
 const btnStop   = $('btn-stop');
+const btnPause  = $('btn-pause');
 
 // Wire key dialog
 $('btn-save-key').onclick = handleSaveKey;
@@ -798,6 +946,24 @@ $('key-dialog').onclick = e => { if (e.target === $('key-dialog') && getKey()) h
 
 // Check for key on load
 if (!getKey()) showKeyDialog();
+
+// Restore last script from cache
+const lastRaw = cacheLastRaw();
+if (lastRaw) $('script-input').value = lastRaw;
+
+// Triple-tap logo to toggle debug panel
+let logoTapCount = 0, logoTapTimer = null;
+$('logo-tap').addEventListener('click', () => {
+  logoTapCount++;
+  clearTimeout(logoTapTimer);
+  logoTapTimer = setTimeout(() => {
+    if (logoTapCount >= 3) {
+      const panel = $('debug-panel');
+      panel.classList.toggle('visible');
+    }
+    logoTapCount = 0;
+  }, 400);
+});
 
 // ─── Step Nav ────────────────────────────────────────────────────────────────
 function goStep(n) {
@@ -815,11 +981,33 @@ function goStep(n) {
 // ─── Parse Script ────────────────────────────────────────────────────────────
 btnParse.onclick = async () => {
   const ta = $('script-input');
-  const script = ta.value.trim() || ta.placeholder.replace(/^.*?\n\n/s, '').trim();
+  const userTyped = ta.value.trim();
+  const placeholderScript = ta.placeholder.replace(/^.*?\n\n/s, '').trim();
+  const script = userTyped || placeholderScript;
+  const isPlaceholder = !userTyped;
 
   btnParse.disabled = true;
-  btnParse.innerHTML = 'מנתח<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
   $('parse-error').style.display = 'none';
+
+  // ── Cache hit? ──
+  const cached = cacheGet(script);
+  if (cached) {
+    btnParse.innerHTML = '✦ נתח תסריט';
+    btnParse.disabled = false;
+    const parsed = cached.parsed;
+    parsedScript = parsed;
+    charVoices = assignVoices(parsedScript.characters);
+    buildCastScreen();
+    userCharacter = null;
+    startLineIndex = 0;
+    btnStart.disabled = true;
+    const wrap = $('cast-rows-wrap');
+    if (wrap) wrap.classList.add('needs-selection');
+    goStep(1);
+    return;
+  }
+
+  btnParse.innerHTML = 'מנתח<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
 
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -852,6 +1040,8 @@ btnParse.onclick = async () => {
     const raw = data.choices?.[0]?.message?.content || '';
     const parsed = JSON.parse(raw);
     parsed.lines = mergeConsecutiveLines(parsed.lines);
+    // Save to cache (don't store raw text if it's the placeholder)
+    cacheSet(script, parsed, isPlaceholder);
     parsedScript = parsed;
     charVoices = assignVoices(parsedScript.characters);
     buildCastScreen();
@@ -943,8 +1133,9 @@ function renderPreview() {
 
 // ─── Start Session ────────────────────────────────────────────────────────────
 btnStart.onclick = startSession;
-btnBack.onclick = () => { stopSession(); goStep(0); };
-btnStop.onclick = () => { stopSession(); goStep(1); };
+btnBack.onclick  = () => { stopSession(); goStep(0); };
+btnStop.onclick  = () => { stopSession(); goStep(1); };
+btnPause.onclick = togglePause;
 
 async function startSession() {
   $('session-error').style.display = 'none';
@@ -960,31 +1151,34 @@ async function startSession() {
     activeLines = parsedScript.lines.slice(startLineIndex);
     const scriptText = activeLines
       .map(l => {
-        // Strip any parenthetical directions embedded in the text itself,
-        // then append the parsed direction field in square brackets for clarity
         const cleanText = l.text.replace(/[\(\[].*?[\)\]]/g, '').trim();
-        return `${l.character}: ${cleanText}${l.direction ? ` [${l.direction}]` : ''}`;
+        return `${l.character}${l.direction ? ` [${l.direction}]` : ''}: ${cleanText}`;
       })
       .join('\n');
 
     // Use the first AI character's assigned voice for the session
     const sessionVoice = charVoices[others[0]] || 'shimmer';
 
-    const sysPrompt = `אתה שותף לקריאת תסריט בעברית. אתה מגלם את הדמויות: ${others.join(', ')}.
-המשתמש מגלם את: ${userCharacter}.
+    const sysPrompt = `You are a Hebrew script reading partner. You play the following characters: ${others.join(', ')}.
+The user plays: ${userCharacter}.
 
-התסריט:
+THE SCRIPT:
 ${scriptText}
 
-הוראות חשובות:
-- דבר עברית בלבד, תמיד
-- אל תאמר שמות דמויות לעולם — פשוט אמור את הטקסט של השורה ישירות
-- המתן שהמשתמש יסיים לפני שאתה מגיב
-- גלם כל דמות לפי אופייה ורגשותיה
-- קרא את הטקסט של כל שורה מילה במילה, בדיוק כפי שכתוב — אל תשנה, תקצר או תוסיף מילים
-- טקסט בסוגריים מרובעים [] הן הוראות במאי — פעל לפיהן בטון ורגש הדיבור, אך אל תקרא אותן בקול לעולם. לדוגמה: אם השורה היא 'אני אוהב אותך [בלחש]' — אמור רק: 'אני אוהב אותך'
-- המשך את הסצנה לפי סדר התסריט בדיוק
-- אם המשתמש אומר "עצור" או "עזרה", צא מהמחזה וענה בפשטות`;
+INSTRUCTIONS:
+- Always speak in Hebrew only — never switch to any other language.
+- Never say character names out loud — just speak the line directly.
+- Wait for the user to finish their line before you respond.
+- Embody each character fully — match their personality, emotion, and energy.
+- The script is formatted as: CHARACTER [acting direction]: text to speak
+- The text after the colon is what you speak — say it exactly as written, nothing added or removed.
+- Acting directions in square brackets [...] after the character name are instructions for tone and emotion — never read them aloud. Example: 'דני [בלחש]: אני אוהב אותך' — say only: 'אני אוהב אותך'.
+- Follow the script in exact order.
+- If the user says "עצור" or "עזרה", break character and respond naturally.
+- If you sense the user has not finished speaking, or there was crosstalk, call wait_for_user with reason="crosstalk" — do not speak yet.
+- If you heard nothing from the user, or only noise with no clear dialogue, call wait_for_user with reason="user_silent" — do not advance to the next line.
+- If the user started speaking but did not complete their line, call wait_for_user with reason="line_incomplete".
+- If the user asks you to repeat a line (e.g. "תחזור", "שוב", "תגיד שוב"), call wait_for_user with reason="repeat_requested" — the app will rewind to the correct line.`;
 
     // Get ephemeral token from OpenAI
     const tokenRes = await fetch('https://api.openai.com/v1/realtime/sessions', {
@@ -994,10 +1188,37 @@ ${scriptText}
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o-realtime-preview-2024-12-17',
+        model: $('dbg-model').value,
         voice: sessionVoice,
         instructions: sysPrompt,
-        input_audio_transcription: { model: 'whisper-1' },
+        input_audio_transcription: {
+          model: $('dbg-transcription').value,
+          language: $('dbg-language').value || undefined
+        },
+        tools: [
+          {
+            type: 'function',
+            name: 'wait_for_user',
+            description: `Call this tool instead of speaking in ANY of these situations:
+1. The user has not said anything yet (silence, background noise, or unintelligible audio).
+2. What the user said does not resemble their expected line — they may still be thinking or mid-sentence.
+3. You detect crosstalk — the user spoke while you were speaking and may not have finished.
+4. The user explicitly asks you to repeat a line (e.g. "תחזור", "שוב", "תגיד שוב").
+IMPORTANT: Do NOT generate any spoken audio when calling this tool. Wait for the app to instruct you.`,
+            parameters: {
+              type: 'object',
+              properties: {
+                reason: {
+                  type: 'string',
+                  enum: ['crosstalk', 'repeat_requested', 'user_silent', 'line_incomplete'],
+                  description: 'crosstalk = user spoke mid-AI-turn; repeat_requested = user asked to hear line again; user_silent = no speech detected; line_incomplete = user started but did not finish their line'
+                }
+              },
+              required: ['reason']
+            }
+          }
+        ],
+        tool_choice: 'auto',
         turn_detection: {
           type: 'server_vad',
           threshold: 0.45,          // slightly more sensitive to voice
@@ -1080,38 +1301,67 @@ ${scriptText}
     dataChannel = dc;
     let aiTranscript = '';
 
+    // ── Event logger ──────────────────────────────────────────────────────
+    function addLog(msg, type = '') {
+      const now = new Date();
+      const ts = `${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}.${String(now.getMilliseconds()).padStart(3,'0')}`;
+      console.log(`[${ts}] ${msg}`);
+      const panel = $('log-panel');
+      if (!panel) return;
+      const entry = document.createElement('div');
+      entry.className = 'log-entry' + (type ? ` log-${type}` : '');
+      entry.innerHTML = `<span class="log-time">${ts}</span><span class="log-msg">${msg}</span>`;
+      panel.appendChild(entry);
+      panel.scrollTop = panel.scrollHeight;
+    }
+
     // ── Turn state machine ─────────────────────────────────────────────────
     activeLines = parsedScript.lines.slice(startLineIndex);
     let phase = 'idle'; // 'ai_speaking' | 'waiting_user' | 'idle'
     let interrupted = false; // true when user speaks while AI is mid-turn
+    let pendingToolCallId = null; // id of in-flight wait_for_user call
 
     function onAIStarted() {
-      if (phase === 'waiting_user') {
-        currentLine++;
-        if (currentLine < activeLines.length) highlightLine(currentLine);
-      }
+      // Just highlight the current AI line — do NOT advance past user line yet.
+      // We only advance after we confirm the AI delivered a real response (in onAIDone).
       interrupted = false;
       phase = 'ai_speaking';
+      addLog(`▶ AI speech started — line ${currentLine}: "${(activeLines[currentLine]||{}).character || ''}"`, 'speak');
       if (currentLine < activeLines.length && activeLines[currentLine].character !== userCharacter) {
         highlightLine(currentLine);
       }
     }
 
-    function onAIDone() {
-      if (phase !== 'ai_speaking') return;
+    function onAIDone(wasToolCall = false) {
+      if (phase !== 'ai_speaking' && !wasToolCall) return;
       aiTranscript = '';
       updateTranscript('');
 
       if (interrupted) {
-        // AI was cut off mid-line by user speech — don't advance the pointer.
-        // The server will cancel the response and fire a new response.created
-        // once the user finishes speaking. Stay on this line.
+        addLog(`⚡ Interrupted — staying on line ${currentLine}, waiting for user`, 'interrupt');
         interrupted = false;
         phase = 'waiting_user';
         return;
       }
 
-      currentLine++;
+      if (wasToolCall) {
+        // Tool call means user didn't deliver their line — stay put
+        return;
+      }
+
+      // Real AI line completed.
+      // If currentLine is on a user line (we were waiting for user), skip it first.
+      // Then advance past the AI line that just finished.
+      addLog(`✓ AI turn complete — advancing from line ${currentLine}`, 'advance');
+
+      if (activeLines[currentLine]?.character === userCharacter) {
+        // We were on the user line — advance past user line to the AI line, then past it too
+        currentLine += 2;
+      } else {
+        // We were on an AI line — just advance past it
+        currentLine++;
+      }
+
       if (currentLine >= activeLines.length) { phase = 'idle'; return; }
       if (activeLines[currentLine].character === userCharacter) {
         phase = 'waiting_user';
@@ -1122,23 +1372,84 @@ ${scriptText}
       }
     }
 
+    function handleToolCall(callId, args) {
+      const reason = args.reason || 'crosstalk';
+      addLog(`🔧 wait_for_user — reason: "${reason}"`, 'tool');
+      pendingToolCallId = callId;
+
+      if (reason === 'repeat_requested') {
+        if (currentLine > 0) currentLine--;
+        addLog(`↩ Rewinding to line ${currentLine} for repeat`, 'tool');
+        highlightLine(currentLine);
+        phase = 'ai_speaking';
+      } else {
+        // crosstalk / user_silent / line_incomplete — stay on current line, wait for user
+        phase = 'waiting_user';
+        addLog(`⏳ Waiting for user to deliver line ${currentLine}`, 'tool');
+      }
+
+      if (dataChannel && dataChannel.readyState === 'open') {
+        const outputMsg = reason === 'repeat_requested'
+          ? 'המשתמש ביקש שתחזור — חזור על השורה האחרונה שלך מילה במילה.'
+          : 'המתן — האזן לסיום השורה ואז הגב.';
+        dataChannel.send(JSON.stringify({
+          type: 'conversation.item.create',
+          item: { type: 'function_call_output', call_id: callId, output: outputMsg }
+        }));
+        if (reason === 'repeat_requested') {
+          dataChannel.send(JSON.stringify({ type: 'response.create' }));
+        }
+      }
+    }
+
     dc.onmessage = e => {
       try {
         const ev = JSON.parse(e.data);
 
+        // Raw event log (debug — comment out in production)
+        if (!['response.audio_transcript.delta','response.audio.delta','input_audio_buffer.delta'].includes(ev.type)) {
+          addLog(`📨 ${ev.type}`, '');
+        }
+
         // Crosstalk detection — user spoke while AI was talking
         if (ev.type === 'input_audio_buffer.speech_started' && phase === 'ai_speaking') {
           interrupted = true;
+          addLog(`⚡ Interruption — user spoke mid-AI`, 'interrupt');
         }
 
-        if (ev.type === 'response.created')                          onAIStarted();
-        if (ev.type === 'response.audio_transcript.delta')           { aiTranscript += (ev.delta || ''); updateTranscript(aiTranscript); }
-        if (ev.type === 'response.done')                             onAIDone();
-        if (ev.type === 'conversation.item.input_audio_transcription.completed') {
-          updateTranscript('🎤 ' + (ev.transcript || ''));
-          setTimeout(() => updateTranscript(''), 2500);
+        if (ev.type === 'response.created')        onAIStarted();
+        if (ev.type === 'response.audio_transcript.delta') { aiTranscript += (ev.delta || ''); updateTranscript(aiTranscript); }
+
+        if (ev.type === 'response.done') {
+          const items = ev.response?.output || [];
+          const toolCall = items.find(i => i.type === 'function_call');
+          if (toolCall) {
+            try {
+              const args = JSON.parse(toolCall.arguments || '{}');
+              handleToolCall(toolCall.call_id || toolCall.id, args);
+            } catch(parseErr) {
+              addLog(`⚠ Tool call parse error: ${parseErr.message}`, 'interrupt');
+            }
+            aiTranscript = '';
+            updateTranscript('');
+          } else {
+            onAIDone(false);
+          }
         }
-      } catch {}
+
+        if (ev.type === 'response.audio_transcript.done' && ev.transcript) {
+          addLog(`🗣 AI: "${ev.transcript}"`, 'speak');
+        }
+
+        if (ev.type === 'conversation.item.input_audio_transcription.completed') {
+          const text = ev.transcript || '';
+          updateTranscript('🎤 ' + text);
+          setTimeout(() => updateTranscript(''), 2500);
+          if (text) addLog(`🎤 User: "${text}"`, 'advance');
+        }
+      } catch(outerErr) {
+        console.error('dc.onmessage error:', outerErr);
+      }
     };
 
     // SDP offer/answer
@@ -1248,8 +1559,36 @@ function highlightLine(idx) {
   }
 }
 
+let sessionPaused = false;
+
+function togglePause() {
+  if (!micStream) return;
+  sessionPaused = !sessionPaused;
+
+  // Mute/unmute all mic tracks — stops audio reaching the VAD
+  micStream.getAudioTracks().forEach(t => { t.enabled = !sessionPaused; });
+
+  // If paused while AI is speaking, also mute the AI output audio element
+  if (sessionPaused) {
+    if (aiAudioCtx) aiAudioCtx.suspend();
+    setStatus('connecting', 'מושהה');
+    btnPause.textContent = '▶ המשך';
+    btnPause.classList.add('active');
+    addLog('⏸ Session paused', '');
+  } else {
+    if (aiAudioCtx) aiAudioCtx.resume();
+    setStatus('connected', 'מחובר');
+    btnPause.textContent = '⏸ השהה';
+    btnPause.classList.remove('active');
+    addLog('▶ Session resumed', 'advance');
+  }
+}
+
 // ─── Stop Session ────────────────────────────────────────────────────────────
 function stopSession() {
+  sessionPaused = false;
+  btnPause.textContent = '⏸ השהה';
+  btnPause.classList.remove('active');
   if (peerConn) { peerConn.close(); peerConn = null; }
   if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
   if (animId) { cancelAnimationFrame(animId); animId = null; }
